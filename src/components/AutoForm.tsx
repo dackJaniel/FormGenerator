@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from './ui/checkbox';
+import { Switch } from './ui/switch';
 import { Textarea } from './ui/textarea';
 import {
   Select,
@@ -22,10 +23,13 @@ import {
   SelectValue,
 } from './ui/select';
 import MultipleSelector, { Option } from './ui/multi-select';
+import { cn } from '@/lib/utils';
+import { getFormSchema, SchemaTypes } from '@/lib/formSchemas';
 
 type Types =
   | 'string'
   | 'checkbox'
+  | 'switch'
   | 'password'
   | 'select'
   | 'textarea'
@@ -33,32 +37,48 @@ type Types =
   | 'email'
   | 'multi-select';
 
-type Props = {
+export type Props = {
   type: Types;
   name: string;
   options?: Option[];
   hidden?: boolean;
   disabled?: boolean;
   placeholder?: string;
-  // variant?: '';
-  defaultValue?: string;
+  defaultValue?: string | boolean | Option | Option[];
   description?: string;
+  validator: z.ZodTypeAny;
 };
 
-const AutoForm = ({ props }: { props: Props[] }) => {
+const isFieldRequired = (schema: z.ZodTypeAny): boolean => {
+  try {
+    schema.parse(undefined);
+    return false;
+  } catch {
+    return true;
+  }
+};
+
+const AutoForm = ({
+  btnName,
+  schema,
+}: {
+  btnName?: string;
+  schema: SchemaTypes;
+}) => {
   const schemaFields: Record<string, z.ZodTypeAny> = {};
+  const requiredFields: Record<string, boolean> = {};
+
+  const props = getFormSchema(schema);
+  if (!props) {
+    return;
+  }
+
   props.forEach((prop) => {
-    let validator;
-    switch (prop.type) {
-      case 'email':
-        validator = z.string().email();
-        break;
-      case 'number':
-        validator = z.coerce.number();
-        break;
-      default:
-        validator = z.string().min(2).max(50);
-    }
+    // Verwende immer den benutzerdefinierten Validator
+    const validator = prop.validator;
+
+    // Speichern, ob das Feld required ist
+    requiredFields[prop.name] = isFieldRequired(validator);
     schemaFields[prop.name] = validator;
   });
 
@@ -67,7 +87,34 @@ const AutoForm = ({ props }: { props: Props[] }) => {
   // Dynamische defaultValues basierend auf props erstellen
   const defaultFormValue: Record<string, any> = {};
   props.forEach((prop) => {
-    defaultFormValue[prop.name] = prop.defaultValue || '';
+    if (prop.type === 'multi-select') {
+      if (prop.defaultValue) {
+        // Prüfen ob es ein einzelnes Objekt oder ein Array ist
+        if (Array.isArray(prop.defaultValue)) {
+          defaultFormValue[prop.name] = prop.defaultValue;
+        } else {
+          defaultFormValue[prop.name] = [prop.defaultValue];
+        }
+      } else {
+        defaultFormValue[prop.name] = [];
+      }
+    } else if (prop.type === 'select') {
+      if (prop.defaultValue) {
+        // Wenn ein Objekt übergeben wird, extrahieren wir den value
+        if (
+          typeof prop.defaultValue === 'object' &&
+          'value' in prop.defaultValue
+        ) {
+          defaultFormValue[prop.name] = prop.defaultValue.value;
+        } else {
+          defaultFormValue[prop.name] = prop.defaultValue;
+        }
+      } else {
+        defaultFormValue[prop.name] = '';
+      }
+    } else {
+      defaultFormValue[prop.name] = prop.defaultValue || '';
+    }
   });
 
   const form = useForm<z.infer<typeof dynamicSchema>>({
@@ -81,25 +128,63 @@ const AutoForm = ({ props }: { props: Props[] }) => {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-8'>
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className='space-y-4'
+        noValidate>
         {props.map((prop) => (
           <FormField
             key={prop.name}
             control={form.control}
             name={prop.name}
-            render={({ field }) => (
+            render={({ field, fieldState }) => (
               <FormItem>
-                <FormLabel hidden={prop.hidden}>{prop.name}</FormLabel>
-                <CustomFormInput props={prop} field={field} />
-                {prop.description && (
-                  <FormDescription>{prop?.description}</FormDescription>
+                {prop.type === 'checkbox' || prop.type === 'switch' ? (
+                  <div className='flex flex-row items-start space-x-3 space-y-0 rounded-md'>
+                    <CustomFormInput
+                      props={prop}
+                      field={field}
+                      fieldState={fieldState}
+                    />
+                    <div className='space-y-1 leading-none'>
+                      <FormLabel hidden={prop.hidden}>
+                        {prop.name}{' '}
+                        {requiredFields[prop.name] && (
+                          <span className='text-destructive'>*</span>
+                        )}
+                      </FormLabel>
+                      {prop.description && (
+                        <FormDescription>{prop?.description}</FormDescription>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <FormLabel hidden={prop.hidden}>
+                      {prop.name}{' '}
+                      {requiredFields[prop.name] && (
+                        <span className='text-destructive'>*</span>
+                      )}
+                    </FormLabel>
+                    <CustomFormInput
+                      props={prop}
+                      field={field}
+                      fieldState={fieldState}
+                    />
+                    {prop.description && (
+                      <FormDescription>{prop?.description}</FormDescription>
+                    )}
+                  </>
                 )}
                 <FormMessage />
               </FormItem>
             )}
           />
         ))}
-        <Button type='submit'>Absenden</Button>
+        <Button type='submit'>{btnName ?? 'Absenden'}</Button>
+        <p className='text-sm'>
+          <span className='text-destructive'>*</span> Sind Pflichtfelder
+        </p>
       </form>
     </Form>
   );
@@ -110,6 +195,7 @@ export default AutoForm;
 const CustomFormInput = ({
   props,
   field,
+  fieldState,
 }: {
   props: Partial<Props>;
   field: ControllerRenderProps<
@@ -118,7 +204,13 @@ const CustomFormInput = ({
     },
     string
   >;
+  fieldState: { error?: { message?: string } };
 }) => {
+  const hasError = !!fieldState.error;
+
+  // Extrahieren der sicheren HTML-Eigenschaften für Input/Textarea
+  const { type, placeholder, disabled } = props;
+
   switch (props.type) {
     case 'email':
     case 'password':
@@ -126,26 +218,63 @@ const CustomFormInput = ({
     case 'string':
       return (
         <FormControl>
-          <Input {...field} {...props} type={props.type} />
+          <Input
+            {...field}
+            type={type}
+            placeholder={placeholder}
+            disabled={disabled}
+            className={cn(
+              hasError && 'border-destructive focus-visible:ring-destructive'
+            )}
+          />
         </FormControl>
       );
     case 'checkbox':
       return (
         <FormControl>
-          <Checkbox {...field} />
+          <Checkbox
+            checked={field.value}
+            onCheckedChange={field.onChange}
+            disabled={disabled}
+            className={cn(hasError && 'border-destructive')}
+          />
+        </FormControl>
+      );
+    case 'switch':
+      return (
+        <FormControl>
+          <Switch
+            checked={field.value}
+            onCheckedChange={field.onChange}
+            disabled={disabled}
+            className={cn(hasError && 'border-destructive')}
+          />
         </FormControl>
       );
     case 'textarea':
       return (
         <FormControl>
-          <Textarea {...field} {...props} />
+          <Textarea
+            {...field}
+            placeholder={placeholder}
+            disabled={disabled}
+            className={cn(
+              hasError && 'border-destructive focus-visible:ring-destructive'
+            )}
+          />
         </FormControl>
       );
     case 'select':
       return (
-        <Select onValueChange={field.onChange} defaultValue={field.value}>
+        <Select
+          onValueChange={field.onChange}
+          defaultValue={field.value}
+          value={field.value}>
           <FormControl>
-            <SelectTrigger>
+            <SelectTrigger
+              className={cn(
+                hasError && 'border-destructive focus-visible:ring-destructive'
+              )}>
               <SelectValue placeholder='Bitte auswählen' />
             </SelectTrigger>
           </FormControl>
@@ -163,18 +292,23 @@ const CustomFormInput = ({
         </Select>
       );
     case 'multi-select':
-      console.log(props.options);
       return (
-        <MultipleSelector
-          {...field}
-          options={props.options}
-          placeholder='Wochentage auswählen...'
-          emptyIndicator={
-            <p className='text-center text-lg leading-10 text-gray-600 dark:text-gray-400'>
-              no results found.
-            </p>
-          }
-        />
+        <FormControl>
+          <MultipleSelector
+            value={Array.isArray(field.value) ? field.value : []}
+            defaultOptions={props.options || []}
+            placeholder={props.placeholder || 'Bitte auswählen...'}
+            onChange={(selectedOptions) => {
+              field.onChange(selectedOptions);
+            }}
+            emptyIndicator={
+              <p className='text-center text-lg leading-10 text-gray-600 dark:text-gray-400'>
+                Keine Ergebnisse gefunden.
+              </p>
+            }
+            className={cn(hasError && 'border-destructive')}
+          />
+        </FormControl>
       );
     default:
       return <p>Feld wurde nicht gefunden</p>;
