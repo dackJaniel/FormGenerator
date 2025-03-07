@@ -1,7 +1,7 @@
 import type { z } from "zod";
 import { ControllerRenderProps } from "react-hook-form";
 // FieldError wird bereits in dem Interface FormFieldState verwendet
-import { Option, InputTypes } from "@/types/schemaTypes";
+import { Option } from "@/types/schemaTypes";
 import { schemas, SchemaTypes } from "@/schemas/formSchemas";
 
 /**
@@ -47,6 +47,23 @@ export type Props = {
     validator: z.ZodTypeAny;    // Zod-Schema für die Validierung
     defaultValue?: unknown;     // Standardwert
 };
+
+/**
+ * Stelle sicher, dass InputTypes alle möglichen Typen enthält:
+ */
+export type InputTypes =
+    | "string"
+    | "checkbox"
+    | "switch"
+    | "password"
+    | "select"
+    | "textarea"
+    | "number"
+    | "email"
+    | "multi-select"
+    | "tel"
+    | "url"
+    | "date";
 
 /**
  * FieldState-Typ für Formularfelder mit Fehlerzustand

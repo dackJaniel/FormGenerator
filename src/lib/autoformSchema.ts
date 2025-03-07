@@ -34,10 +34,10 @@ export function getPropsFromSchema(
         // Überschreibungen aus fieldOverrides anwenden (falls vorhanden)
         const overrides = fieldOverrides?.[key] || {};
 
-        // Standardwerte für Props setzen
-        return {
+        // Standardwerte für Props setzen mit expliziten Typen
+        const prop: Props = {
             name: key,
-            type: metadata.type || 'string',
+            type: (metadata.type || 'string') as Props["type"],
             label: overrides.label || metadata.label || key,
             description: overrides.description || metadata.description,
             placeholder: overrides.placeholder || metadata.placeholder,
@@ -46,6 +46,8 @@ export function getPropsFromSchema(
             options: fieldOptions,
             validator: value,
         };
+
+        return prop;
     });
 }
 
@@ -53,28 +55,33 @@ export function getPropsFromSchema(
  * Die Hauptfunktion zur Generierung von Props aus einem Schema-Typ.
  * Wird von AutoForm verwendet, um Props aus einem SchemaType zu generieren.
  */
-export function getFormSchema(
-    schemaType: SchemaTypes,
+export function getFormSchema<T extends SchemaTypes>(
+    schemaType: T,
     options?: Record<string, Option[]>,
     fieldOverrides?: FieldOverrides
 ): Props[] | null {
-    // Schema für den angegebenen Typ abrufen
-    const schema = schemas[schemaType];
+    // Schema für den angegebenen Typ abrufen mit explizitem Cast
+    const schema = schemas[schemaType] as z.ZodObject<ZodShape> | undefined;
 
     if (!schema) {
         console.error(`Schema für Typ "${schemaType}" nicht gefunden.`);
         return null;
     }
 
-    // Props aus dem Schema generieren
-    return getPropsFromSchema(schema, options, fieldOverrides);
+    try {
+        // Props aus dem Schema generieren
+        return getPropsFromSchema(schema, options, fieldOverrides);
+    } catch (error) {
+        console.error(`Fehler beim Generieren der Props aus Schema "${schemaType}":`, error);
+        return null;
+    }
 }
 
 // Optional: Eine Funktion, um Fehlermeldungen zu überschreiben
 export function withCustomErrorMessages(
-    schema: z.ZodObject<any>,
+    schema: z.ZodObject<ZodShape>,
     errorMessages: Record<string, string>
-): z.ZodObject<any> {
+): z.ZodObject<ZodShape> {
     const shape = schema._def.shape();
     const newShape: Record<string, z.ZodTypeAny> = {};
 
@@ -82,7 +89,6 @@ export function withCustomErrorMessages(
         if (errorMessages[key]) {
             // Hier könnten wir eine tiefere Logik implementieren,
             // um spezifische Validierungsregeln mit benutzerdefinierten Meldungen zu versehen
-            // Dies ist jedoch komplex und würde eine Erweiterung des Zod-Schemas erfordern
             newShape[key] = field;
         } else {
             newShape[key] = field;

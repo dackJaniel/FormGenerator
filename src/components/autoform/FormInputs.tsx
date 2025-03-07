@@ -18,6 +18,8 @@ import { format } from 'date-fns';
 import { FormInputProps } from '@/types/formTypes';
 import { cn } from '@/lib/utils';
 import { CalendarIcon } from 'lucide-react';
+// Import für deutsche Lokalisierung
+import { de } from 'date-fns/locale';
 
 /**
  * FormInput-Komponente, die basierend auf dem Feldtyp das passende Eingabefeld rendert
@@ -42,10 +44,18 @@ const FormInput = ({ props, field, fieldState }: FormInputProps) => {
         <FormControl>
           <Input
             {...field}
-            value={field.value as string}
+            // Sicherstellen, dass `value` immer ein String ist
+            value={field.value === null || field.value === undefined ? '' :
+              typeof field.value === 'object' ?
+                JSON.stringify(field.value) : String(field.value)}
             type={type}
-            placeholder={placeholder}
+            placeholder={placeholder || ''}
             disabled={disabled}
+            onChange={(e) => {
+              // Leere Eingabe als undefined verarbeiten, sonst den normalen Wert
+              const value = e.target.value === '' ? undefined : e.target.value;
+              field.onChange(value);
+            }}
             className={cn(
               'placeholder:text-xs',
               hasError && 'border-destructive focus-visible:ring-destructive'
@@ -151,25 +161,37 @@ const FormInput = ({ props, field, fieldState }: FormInputProps) => {
                 variant={'outline'}
                 className={cn(
                   'w-full pl-3 text-left font-normal',
-                  !field.value && 'text-muted-foreground'
+                  !field.value && 'text-muted-foreground',
+                  hasError && 'border-destructive focus-visible:ring-destructive'
                 )}>
                 {field.value ? (
                   format(field.value as Date, 'dd.MM.yyyy')
                 ) : (
-                  <span>Wähle ein Datum</span>
+                  <span>Datum auswählen</span>
                 )}
                 <CalendarIcon className='ml-auto h-4 w-4 opacity-50' />
               </Button>
             </FormControl>
           </PopoverTrigger>
           <PopoverContent className='w-auto p-0' align='start'>
-            <Calendar
-              mode='single'
-              selected={field.value as Date}
-              onSelect={field.onChange}
-              disabled={(date) => date <= new Date()}
-              initialFocus
-            />
+            <div className="p-2">
+              <Calendar
+                mode='single'
+                selected={field.value as Date}
+                onSelect={(date) => {
+                  if (date) {
+                    // Stellen Sie sicher, dass ein gültiges Date-Objekt übergeben wird
+                    field.onChange(date);
+                  } else {
+                    // Bei Abwahl setzen wir undefined, was als Pflichtfeldfehler erkannt wird
+                    field.onChange(undefined);
+                  }
+                }}
+                // Die Einschränkung auf Future-Dates entfernt, damit auch Geburtsdaten wählbar sind
+                initialFocus
+                locale={de} // Deutsche Lokalisierung über date-fns/locale
+              />
+            </div>
           </PopoverContent>
         </Popover>
       );

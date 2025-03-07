@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/form';
 
 import { getFormSchema } from '@/lib/autoformSchema';
-import { SchemaTypes } from '@/types/schemaTypes';
 import {
   AutoFormProps,
   DefaultValueItem,
@@ -23,6 +22,10 @@ import {
   SubmitResult,
 } from '@/types/formTypes';
 import FormInput from './FormInputs';
+import { AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { SchemaTypes } from '@/schemas/formSchemas';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 /**
  * AutoForm ist die Hauptkomponente des Systems.
@@ -52,6 +55,8 @@ function AutoForm<T extends SchemaTypes>({
   errorMessages = {},
   onSubmit,
 }: AutoFormProps<T>) {
+  const [formError, setFormError] = useState<{ fieldName?: string, message: string } | null>(null);
+
   // Typsichere Speicherstrukturen für die Formularerstellung
   const schemaFields: Record<string, z.ZodTypeAny> = {};
   const requiredFields: FieldRequirement = {};
@@ -60,68 +65,125 @@ function AutoForm<T extends SchemaTypes>({
   // Schema in Props konvertieren
   const props = getFormSchema(schema, options, fieldOverrides);
 
+  useEffect(() => {
+    // Validiere das Schema und setze Fehlermeldung falls nötig
+    if (!props) {
+      setFormError({
+        message: `Das Formular kann nicht angezeigt werden. Schema "${schema}" existiert nicht.`
+      });
+      return;
+    }
+
+    if (props.length === 0) {
+      setFormError({
+        message: `Das Formular kann nicht angezeigt werden, da es keine Felder enthält.`
+      });
+      return;
+    }
+
+    // Formular-Fehler zurücksetzen, wenn alles in Ordnung ist
+    setFormError(null);
+  }, [schema, props]);
+
   // Schema-Felder verarbeiten, falls das Schema existiert
   if (props) {
-    props.forEach((prop) => {
-      // Schema aus den Props extrahieren
-      const validator = prop.validator;
+    try {
+      props.forEach((prop) => {
+        try {
+          // Schema aus den Props extrahieren
+          const validator = prop.validator;
 
-      // Pflichtfelder identifizieren und speichern
-      requiredFields[prop.name] = isFieldRequired(validator);
-      schemaFields[prop.name] = validator;
+          // Pflichtfelder identifizieren und speichern
+          requiredFields[prop.name] = isFieldRequired(validator);
+          schemaFields[prop.name] = validator;
 
-      // Default-Wert aus den übergebenen Werten finden
-      // Hier wird typsicher auf DefaultValueItem<T> geprüft
-      const defaultValueItem = defaultValues.find(
-        (item: DefaultValueItem<T> | undefined) => {
-          if (!item) return false;
-          // Prüfung, ob prop.name als Schlüssel existiert
-          return prop.name in item;
-        }
-      );
+          // Default-Wert aus den übergebenen Werten finden
+          // Hier wird typsicher auf DefaultValueItem<T> geprüft
+          const defaultValueItem = defaultValues.find(
+            (item: DefaultValueItem<T> | undefined) => {
+              if (!item) return false;
+              // Prüfung, ob prop.name als Schlüssel existiert
+              return prop.name in item;
+            }
+          );
 
-      // Typsichere Extraktion des tatsächlichen Werts
-      const defaultValue = defaultValueItem
-        ? (defaultValueItem as Record<string, unknown>)[prop.name]
-        : undefined;
+          // Typsichere Extraktion des tatsächlichen Werts
+          const defaultValue = defaultValueItem
+            ? (defaultValueItem as Record<string, unknown>)[prop.name]
+            : undefined;
 
-      // Feldtyp-spezifische Werteinitalisierung
-      if (prop.type === 'multi-select') {
-        // MultiSelect benötigt ein Array
-        if (defaultValue) {
-          defaultFormValue[prop.name] = Array.isArray(defaultValue)
-            ? defaultValue
-            : [defaultValue];
-        } else {
-          defaultFormValue[prop.name] = [];
-        }
-      } else if (prop.type === 'select') {
-        // Select-Felder mit Sonderbehandlung für Optionsobjekte
-        if (defaultValue) {
-          if (
-            typeof defaultValue === 'object' &&
-            defaultValue !== null &&
-            'value' in defaultValue
-          ) {
-            defaultFormValue[prop.name] = (
-              defaultValue as { value: unknown }
-            ).value;
+          // Feldtyp-spezifische Werteinitalisierung
+          if (prop.type === 'multi-select') {
+            // MultiSelect benötigt ein Array
+            if (defaultValue) {
+              defaultFormValue[prop.name] = Array.isArray(defaultValue)
+                ? defaultValue
+                : [defaultValue];
+            } else {
+              defaultFormValue[prop.name] = [];
+            }
+          } else if (prop.type === 'select') {
+            // Select-Felder mit Sonderbehandlung für Optionsobjekte
+            if (defaultValue) {
+              if (
+                typeof defaultValue === 'object' &&
+                defaultValue !== null &&
+                'value' in defaultValue
+              ) {
+                defaultFormValue[prop.name] = (
+                  defaultValue as { value: unknown }
+                ).value;
+              } else {
+                defaultFormValue[prop.name] = defaultValue;
+              }
+            } else {
+              defaultFormValue[prop.name] = '';
+            }
           } else {
-            defaultFormValue[prop.name] = defaultValue;
+            // Standardfall für alle anderen Feldtypen
+            defaultFormValue[prop.name] =
+              defaultValue !== undefined ? defaultValue : '';
           }
-        } else {
-          defaultFormValue[prop.name] = '';
+        } catch (error) {
+          // Fehler bei einem einzelnen Feld
+          setFormError({
+            fieldName: prop.name,
+            message: `Das Formular kann wegen dem Feld "${prop.name}" nicht angezeigt werden. ${error instanceof Error ? error.message : 'Ungültiger Feldtyp oder Konfiguration.'}`
+          });
         }
-      } else {
-        // Standardfall für alle anderen Feldtypen
-        defaultFormValue[prop.name] =
-          defaultValue !== undefined ? defaultValue : '';
-      }
-    });
+      });
+    } catch (error) {
+      // Allgemeiner Fehler bei der Formularverarbeitung
+      setFormError({
+        message: `Ein Fehler ist bei der Formularerstellung aufgetreten: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+      });
+    }
   }
 
   // Dynamisches Schema für die Validierung erstellen
-  const dynamicSchema = z.object(schemaFields);
+  let dynamicSchema: z.ZodObject<any> | null = null;
+  try {
+    dynamicSchema = z.object(schemaFields);
+  } catch (error) {
+    if (!formError) {
+      setFormError({
+        message: `Fehler beim Erstellen des Validierungsschemas: ${error instanceof Error ? error.message : 'Ungültiges Schema'}`
+      });
+    }
+  }
+
+  // Wenn kein gültiges Schema vorhanden ist, früh zurückkehren
+  if (!dynamicSchema) {
+    return (
+      <Alert variant="destructive" className="mb-4">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Formularfehler</AlertTitle>
+        <AlertDescription>
+          {formError?.message || 'Das Formular konnte nicht erstellt werden.'}
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   // Typsichere Form-Werte basierend auf dem Schema
   type FormSchemaType = z.infer<typeof dynamicSchema>;
@@ -138,35 +200,62 @@ function AutoForm<T extends SchemaTypes>({
    * Formular-Submit-Handler mit typsicherer Verarbeitung
    */
   async function handleSubmit(values: FormSchemaType): Promise<void> {
-    if (onSubmit) {
-      // Typenkonvertierung für den übergebenen onSubmit-Handler
-      const typedValues = values as unknown as FormValues<T>;
-      const res: SubmitResult | void = await onSubmit(typedValues);
+    try {
+      if (onSubmit) {
+        // Typenkonvertierung für den übergebenen onSubmit-Handler
+        const typedValues = values as unknown as FormValues<T>;
+        const res: SubmitResult | void = await onSubmit(typedValues);
 
-      // Fehlerbehandlung
-      if (res && 'status' in res && res.status === 'error') {
-        console.error(res.message ?? 'Ein Fehler ist aufgetreten');
+        // Fehlerbehandlung
+        if (res && 'status' in res && res.status === 'error') {
+          console.error(res.message ?? 'Ein Fehler ist aufgetreten');
+          return;
+        }
+
+        if (res) {
+          console.log('Erfolgreich übermittelt:', res);
+        }
         return;
+      } else {
+        // Standardfall, wenn kein onSubmit-Handler übergeben wurde
+        console.log('Übermittelte Werte:', values);
       }
-
-      if (res) {
-        console.log('Erfolgreich übermittelt:', res);
-      }
-      return;
-    } else {
-      // Standardfall, wenn kein onSubmit-Handler übergeben wurde
-      console.log('Übermittelte Werte:', values);
+    } catch (error) {
+      console.error('Fehler beim Submit:', error);
+      setFormError({
+        message: `Fehler beim Absenden des Formulars: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+      });
     }
   }
 
-  // Wenn keine Props vorhanden sind, wird nichts gerendert
-  if (!props) {
-    return null;
+  // Wenn ein Formularfehler vorliegt, zeigen wir eine Fehlermeldung an
+  if (formError) {
+    return (
+      <Alert variant="destructive" className="mb-4">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Formularfehler</AlertTitle>
+        <AlertDescription>
+          {formError.message}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  // Wenn keine Props vorhanden sind, wird eine Fehlermeldung angezeigt
+  if (!props || props.length === 0) {
+    return (
+      <Alert variant="destructive" className="mb-4">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Formularfehler</AlertTitle>
+        <AlertDescription>
+          Das Formular kann nicht angezeigt werden, da keine Felder definiert wurden.
+        </AlertDescription>
+      </Alert>
+    );
   }
 
   return (
     <>
-      <p>Neues Form</p>
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(handleSubmit)}
