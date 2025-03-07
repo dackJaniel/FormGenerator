@@ -1,10 +1,15 @@
 import { ControllerRenderProps, FieldValues, ControllerFieldState } from "react-hook-form";
 
+/**
+ * Standardisierte Optionsobjekt-Schnittstelle für Select- und MultiSelect-Felder.
+ * Wird sowohl in Schemas als auch in der Formular-Darstellung verwendet.
+ */
 export interface Option {
-    label: string;
-    value: string;
-    // Sicherstellen, dass dynamische Properties zulässig sind
-    [key: string]: string;
+    value: string;              // Der tatsächliche Wert, der beim Submit übermittelt wird
+    label: string;              // Die für den Benutzer sichtbare Bezeichnung
+    disable?: boolean;          // Optional: Option deaktivieren
+    fixed?: boolean;            // Optional: Option kann nicht entfernt werden (für MultiSelect)
+    [key: string]: string | boolean | undefined;  // Zusätzliche benutzerdefinierte Eigenschaften
 }
 
 export interface BaseFieldProps {

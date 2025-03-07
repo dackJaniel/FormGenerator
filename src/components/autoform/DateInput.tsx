@@ -36,7 +36,7 @@ const DateInput = ({ field, fieldState }: BaseFieldProps) => {
                     <Calendar
                         mode='single'
                         selected={field.value as Date}
-                        onSelect={(date) => {
+                        onSelect={(date: Date | undefined) => {
                             if (date) {
                                 field.onChange(date);
                             } else {

@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { extractMetadata } from './zodExtensions';
-import { Option } from '@/types/schemaTypes';
 import { FieldOverrides, Props } from '@/types/formTypes';
 import { schemas, SchemaTypes } from '@/schemas/formSchemas';
+import { Option } from '@/types/formFieldTypes';
 
 /**
  * Diese Datei enthält die Kernlogik zum Generieren von Formular-Properties aus Zod-Schemas.
@@ -29,7 +29,15 @@ export function getPropsFromSchema(
         const metadata = extractMetadata(value);
 
         // Optionen aus Parametern oder Metadaten abrufen
-        const fieldOptions = options?.[key] || metadata.options;
+        // Hier typensicher umwandeln, um Kompatibilität sicherzustellen
+        let fieldOptions: Option[] | undefined = undefined;
+
+        if (options?.[key]) {
+            fieldOptions = options[key];
+        } else if (metadata.options) {
+            // Explizite Typkonvertierung, da wir wissen, dass das Format identisch ist
+            fieldOptions = metadata.options as unknown as Option[];
+        }
 
         // Überschreibungen aus fieldOverrides anwenden (falls vorhanden)
         const overrides = fieldOverrides?.[key] || {};
