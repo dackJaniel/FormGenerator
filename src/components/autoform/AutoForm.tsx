@@ -196,7 +196,7 @@ function AutoForm<T extends SchemaTypes>(props: AutoFormProps<T>) {
   // react-hook-form Setup mit Zod-Validierung und benutzerdefinierten Fehlermeldungen
   const form = useForm<FormSchemaType>({
     resolver: async (values, context, options) => {
-      // Werte vorverarbeiten: Leere Strings in optionalen Feldern zu undefined umwandeln
+      // Werte vorverarbeiten: Leere Strings bei optionalen Feldern in undefined umwandeln
       const processedValues = { ...values };
 
       // Für jedes Schema-Feld prüfen
@@ -205,13 +205,18 @@ function AutoForm<T extends SchemaTypes>(props: AutoFormProps<T>) {
         if (!requiredFields[key]) {
           const value = processedValues[key];
 
-          // Fall 1: Leere Strings in undefined umwandeln
-          if (typeof value === 'string' && value === '') {
+          // Fall 1: Leere Strings zu undefined machen, damit sie als "nicht ausgefüllt" gelten
+          if (typeof value === 'string' && value.trim() === '') {
             processedValues[key] = undefined;
           }
 
-          // Fall 2: Leere Arrays in undefined umwandeln (für Multi-Select)
+          // Fall 2: Leere Arrays zu undefined machen
           if (Array.isArray(value) && value.length === 0) {
+            processedValues[key] = undefined;
+          }
+
+          // Fall 3: Explizites '' für Input-Felder zu undefined machen
+          if (value === '') {
             processedValues[key] = undefined;
           }
         }
@@ -220,6 +225,7 @@ function AutoForm<T extends SchemaTypes>(props: AutoFormProps<T>) {
       // Validierung mit verarbeiteten Werten durchführen
       return zodResolver(dynamicSchema)(processedValues, context, options);
     },
+    // Bei der Initialisierung auch explizit optionale Default-Werte als optional markieren
     defaultValues: defaultFormValue as unknown as FormSchemaType,
     // Hier fügen wir eine Logik ein, um die Fehlermeldungen anzupassen
     context: { errorMessages, fieldOverrides }

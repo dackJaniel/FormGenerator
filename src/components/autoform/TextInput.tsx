@@ -21,9 +21,9 @@ const TextInput = ({ field, fieldState, type, placeholder, disabled }: TextField
                     // Für Zahlenfelder: konvertiere den String-Wert in eine Zahl
                     if (type === 'number') {
                         const value = e.target.value;
-                        // Leere Eingabe als undefined verarbeiten
+                        // Leere Eingabe als leeren String verarbeiten
                         if (value === '') {
-                            field.onChange(undefined);
+                            field.onChange('');
                         } else {
                             // Versuche den Wert als Zahl zu parsen
                             const numValue = parseFloat(value);
@@ -36,8 +36,8 @@ const TextInput = ({ field, fieldState, type, placeholder, disabled }: TextField
                             }
                         }
                     } else {
-                        // Für andere Felder: wie bisher
-                        const value = e.target.value === '' ? undefined : e.target.value;
+                        // Für andere Felder: Leere Eingaben als leere Strings speichern
+                        const value = e.target.value;
                         field.onChange(value);
                     }
                 }}
