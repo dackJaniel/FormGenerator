@@ -34,7 +34,7 @@ export const userSchema = z.object({
     email: zod.email({
         label: "E-Mail",
         placeholder: "E-Mail eingeben",
-    }),
+    }).optional(),
 
     firstname: zod.string({
         label: "Vorname"
@@ -46,7 +46,7 @@ export const userSchema = z.object({
 
     age: zod.number({
         label: "Alter"
-    }).min(18, "Sie müssen mindestens 18 Jahre alt sein"),
+    }),
 
     password: zod.password({
         label: "Passwort",

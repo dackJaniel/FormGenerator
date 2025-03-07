@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { extractMetadata } from './zodExtensions';
-import { SchemaTypes, Option } from '@/types/schemaTypes';
+import { Option } from '@/types/schemaTypes';
 import { FieldOverrides, Props } from '@/types/formTypes';
-import { schemas } from '@/schemas/formSchemas';
+import { schemas, SchemaTypes } from '@/schemas/formSchemas';
 
 /**
  * Diese Datei enthält die Kernlogik zum Generieren von Formular-Properties aus Zod-Schemas.

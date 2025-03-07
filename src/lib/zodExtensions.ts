@@ -9,139 +9,103 @@ interface ExtendedZodType<T extends z.ZodTypeAny> extends z.ZodTypeAny {
     __fieldMetadata?: FieldMetadata;
 }
 
+// Symbol als eindeutige ID für unsere Metadaten
+const META_KEY = Symbol("fieldMetadata");
+
 /**
  * Fügt Metadaten zu einem Zod-Schema hinzu.
- * Diese Metadaten werden später verwendet, um UI-Komponenten zu generieren.
- * 
- * @param schema - Das Zod-Schema, das erweitert werden soll
- * @param metadata - Die Metadaten, die zum Schema hinzugefügt werden sollen
- * @returns Das erweiterte Schema mit angehängten Metadaten
+ * Diese werden direkt am Schema-Objekt und mit einem Symbol gespeichert,
+ * damit sie auch bei Validierungsketten nicht verloren gehen.
  */
 export function withMetadata<T extends z.ZodTypeAny>(
     schema: T,
     metadata: FieldMetadata
 ): T {
-    const metadataKey = "__fieldMetadata";
-    const extendedSchema = schema as ExtendedZodType<T>;
-    const currentMeta = extendedSchema[metadataKey] || {};
-    const newMeta = { ...currentMeta, ...metadata };
+    const extendedSchema = schema as any;
 
-    // Speicherung der Metadaten als Eigenschaft am Schema-Objekt
-    extendedSchema[metadataKey] = newMeta;
+    // Backward-Kompatibilität mit bestehender Implementierung
+    const currentMeta = extendedSchema.__fieldMetadata || {};
+    extendedSchema.__fieldMetadata = { ...currentMeta, ...metadata };
+
+    // Zusätzliche Symbol-basierte Speicherung für bessere Persistenz
+    extendedSchema[META_KEY] = { ...currentMeta, ...metadata };
+
+    // Überschreiben der .optional()-Methode, um Metadaten zu erhalten
+    const originalOptional = extendedSchema.optional;
+    extendedSchema.optional = function () {
+        const optSchema = originalOptional.apply(this);
+        return withMetadata(optSchema, extendedSchema[META_KEY] || {});
+    };
+
+    // Validierungsmethoden patchen, um Metadaten zu erhalten
+    patchValidationMethods(extendedSchema);
 
     return schema;
 }
 
 /**
- * Macht ein Schema optional und überträgt dabei alle Metadaten
- * @param schema - Das Schema, das optional werden soll
- * @returns Ein optionales Schema mit den Metadaten des ursprünglichen Schemas
+ * Patcht die gängigen Validierungsmethoden eines Schemas, um Metadaten zu erhalten
  */
-export function optional<T extends z.ZodTypeAny>(schema: T): T {
-    const metadata = extractMetadata(schema);
-    const optionalSchema = schema.optional();
-    return withMetadata(optionalSchema, metadata) as T;
-}
+function patchValidationMethods(schema: any) {
+    // Für String-spezifische Methoden
+    if (schema instanceof z.ZodString) {
+        const methods = ['min', 'max', 'length', 'email', 'url', 'uuid', 'cuid', 'regex', 'startsWith', 'endsWith'];
+        methods.forEach(method => {
+            if (typeof schema[method] === 'function') {
+                const originalMethod = schema[method];
+                schema[method] = function (...args: any[]) {
+                    const result = originalMethod.apply(this, args);
+                    return withMetadata(result, schema[META_KEY] || {});
+                };
+            }
+        });
+    }
 
-/**
- * Erstellt ein String-Schema mit UI-Metadaten
- * @param metadata - Optional: UI-bezogene Metadaten
- */
-export function string(metadata: FieldMetadata = {}) {
-    return withMetadata(z.string(), { type: "string", ...metadata });
-}
+    // Für Number-spezifische Methoden
+    if (schema instanceof z.ZodNumber) {
+        const methods = ['min', 'max', 'int', 'positive', 'negative', 'nonpositive', 'nonnegative'];
+        methods.forEach(method => {
+            if (typeof schema[method] === 'function') {
+                const originalMethod = schema[method];
+                schema[method] = function (...args: any[]) {
+                    const result = originalMethod.apply(this, args);
+                    return withMetadata(result, schema[META_KEY] || {});
+                };
+            }
+        });
+    }
 
-/**
- * Erstellt ein E-Mail-Schema mit UI-Metadaten
- * @param metadata - Optional: UI-bezogene Metadaten
- */
-export function email(metadata: FieldMetadata = {}) {
-    return withMetadata(z.string().email(), { type: "email", ...metadata });
-}
-
-/**
- * Erstellt ein Passwort-Schema mit UI-Metadaten
- * @param metadata - Optional: UI-bezogene Metadaten
- */
-export function password(metadata: FieldMetadata = {}) {
-    return withMetadata(z.string(), { type: "password", ...metadata });
-}
-
-/**
- * Erstellt ein Number-Schema mit UI-Metadaten
- * @param metadata - Optional: UI-bezogene Metadaten
- */
-export function number(metadata: FieldMetadata = {}) {
-    return withMetadata(z.coerce.number(), { type: "number", ...metadata });
-}
-
-/**
- * Erstellt ein Boolean-Schema mit UI-Metadaten als Checkbox
- * @param metadata - Optional: UI-bezogene Metadaten
- */
-export function boolean(metadata: FieldMetadata = {}) {
-    return withMetadata(z.boolean(), { type: "checkbox", ...metadata });
-}
-
-/**
- * Erstellt ein Select-Schema mit Optionen und UI-Metadaten
- * @param options - Die Auswahlmöglichkeiten für das Dropdown
- * @param metadata - Optional: UI-bezogene Metadaten
- */
-export function select(options: Option[], metadata: FieldMetadata = {}) {
-    return withMetadata(z.string(), {
-        type: "select",
-        options,
-        ...metadata
+    // Allgemeine Methoden für alle Schema-Typen
+    ['optional', 'nullable', 'nullish', 'default', 'catch', 'refine', 'superRefine', 'transform', 'pipe'].forEach(method => {
+        if (typeof schema[method] === 'function') {
+            const originalMethod = schema[method];
+            schema[method] = function (...args: any[]) {
+                const result = originalMethod.apply(this, args);
+                return withMetadata(result, schema[META_KEY] || {});
+            };
+        }
     });
 }
 
 /**
- * Erstellt ein MultiSelect-Schema mit Optionen und UI-Metadaten
- * @param options - Die Auswahlmöglichkeiten für die Mehrfachauswahl
- * @param metadata - Optional: UI-bezogene Metadaten
- */
-export function multiSelect(options: Option[], metadata: FieldMetadata = {}) {
-    return withMetadata(
-        z.array(z.object({ label: z.string(), value: z.any() })),
-        { type: "multi-select", options, ...metadata }
-    );
-}
-
-/**
- * Erstellt ein Textarea-Schema mit UI-Metadaten
- * @param metadata - Optional: UI-bezogene Metadaten
- */
-export function textarea(metadata: FieldMetadata = {}) {
-    return withMetadata(z.string(), { type: "textarea", ...metadata });
-}
-
-/**
- * Erstellt ein Date-Schema mit UI-Metadaten
- * @param metadata - Optional: UI-bezogene Metadaten
- */
-export function date(metadata: FieldMetadata = {}) {
-    return withMetadata(z.date(), { type: "date", ...metadata });
-}
-
-/**
- * Extrahiert Metadaten aus einem Zod-Schema
- * @param schema - Das Schema, aus dem die Metadaten extrahiert werden sollen
- * @returns Die im Schema gespeicherten Metadaten oder ein leeres Objekt
+ * Verbesserte Metadaten-Extraktion, die tiefer nach Metadaten sucht und 
+ * sowohl das Symbol als auch die Eigenschaft berücksichtigt
  */
 export function extractMetadata(schema: z.ZodTypeAny): FieldMetadata {
-    // Wenn das Schema null oder undefined ist, leeres Objekt zurückgeben
     if (!schema) return {};
 
-    const extendedSchema = schema as ExtendedZodType<z.ZodTypeAny>;
+    // Symbol-basierte Metadaten haben höchste Priorität
+    if ((schema as any)[META_KEY]) {
+        return (schema as any)[META_KEY];
+    }
 
-    // 1. Direkt gespeicherte Metadaten haben höchste Priorität
-    if (extendedSchema.__fieldMetadata) {
-        return extendedSchema.__fieldMetadata;
+    // Dann die normale Eigenschaft
+    if ((schema as ExtendedZodType<typeof schema>).__fieldMetadata) {
+        return (schema as ExtendedZodType<typeof schema>).__fieldMetadata;
     }
 
     try {
-        // 2. Rekursive Extraktion für verschiedene Zod-Typen
+        // Versuche Metadaten aus verschiedenen Schema-Typen zu extrahieren
 
         // Für ZodEffects (wie bei .refine(), .transform(), etc.)
         if (schema instanceof z.ZodEffects && schema._def) {
@@ -153,37 +117,28 @@ export function extractMetadata(schema: z.ZodTypeAny): FieldMetadata {
             return extractMetadata(schema._def.innerType);
         }
 
-        // Sichere Typprüfungen für Schema-Definitionen
-        if (schema._def) {
-            // Für verschachtelte Schemas mit innerType (z.B. nach min(), max())
-            if ('innerType' in schema._def && schema._def.innerType) {
-                return extractMetadata(schema._def.innerType);
-            }
-
-            // Für ZodEffects und ähnliche
-            if ('schema' in schema._def && schema._def.schema) {
-                return extractMetadata(schema._def.schema);
-            }
-
-            // Für Arrays und Listen
-            if ('type' in schema._def && schema._def.type) {
-                return extractMetadata(schema._def.type);
-            }
-
-            // Für Typen mit typeName
-            if ('typeName' in schema._def && typeof schema._def.typeName === 'string') {
-                if (schema._def.typeName === 'ZodObject') {
-                    return (schema as unknown as ExtendedZodType<z.ZodObject<any>>).__fieldMetadata || {};
-                }
-
-                if (schema._def.typeName === 'ZodEnum') {
-                    return (schema as unknown as ExtendedZodType<z.ZodEnum<any>>).__fieldMetadata || {};
-                }
-            }
+        // Für ZodDefault (bei .default())
+        if ('defaultValue' in schema._def && schema._def.innerType) {
+            return extractMetadata(schema._def.innerType);
         }
 
-        // Rekursive Suche nach verschachtelten Schemas
-        const innerSchemas = findPossibleInnerSchemas(schema);
+        // Für verschachtelte Schemas mit innerType (z.B. nach min(), max())
+        if ('innerType' in schema._def && schema._def.innerType) {
+            return extractMetadata(schema._def.innerType);
+        }
+
+        // Für ZodEffects und ähnliche
+        if ('schema' in schema._def && schema._def.schema) {
+            return extractMetadata(schema._def.schema);
+        }
+
+        // Für Arrays und Listen
+        if ('type' in schema._def && schema._def.type) {
+            return extractMetadata(schema._def.type);
+        }
+
+        // Überprüfung aller möglichen inneren Schemas
+        const innerSchemas = findAllPossibleInnerSchemas(schema);
         for (const innerSchema of innerSchemas) {
             const metadata = extractMetadata(innerSchema);
             if (Object.keys(metadata).length > 0) {
@@ -191,47 +146,122 @@ export function extractMetadata(schema: z.ZodTypeAny): FieldMetadata {
             }
         }
     } catch (e) {
-        // Fehler beim Extrahieren der Metadaten abfangen, um Abstürze zu vermeiden
         console.warn('Fehler beim Extrahieren der Metadaten:', e);
     }
 
-    // Fallback für alle anderen Fälle
     return {};
 }
 
 /**
- * Hilfsfunktion zum Durchsuchen aller möglichen inneren Schemas
- * Diese Funktion hilft bei der Extraktion von Metadaten aus komplexen 
- * verschachtelten Schemas, besonders bei Validierungsketten
+ * Findet alle möglichen inneren Schemas in einem komplexen Zod-Schema
  */
-function findPossibleInnerSchemas(schema: z.ZodTypeAny): z.ZodTypeAny[] {
-    if (!schema || typeof schema !== 'object') return [];
-    if (!('_def' in schema) || !schema._def || typeof schema._def !== 'object') return [];
+function findAllPossibleInnerSchemas(schema: z.ZodTypeAny): z.ZodTypeAny[] {
+    if (!schema || typeof schema !== 'object' || !('_def' in schema)) return [];
 
     const result: z.ZodTypeAny[] = [];
 
     try {
-        // Durchsuche alle Properties des _def-Objekts nach möglichen Schemas
-        for (const key in schema._def) {
-            // Typname überspringen
-            if (key === 'typeName') continue;
+        // Rekursive Suche durch alle properties des _def-Objekts
+        const searchInObject = (obj: any): void => {
+            if (!obj || typeof obj !== 'object') return;
 
-            const value = (schema._def as Record<string, unknown>)[key];
-
-            // Sicherstellen, dass der Wert ein Objekt ist
-            if (!value || typeof value !== 'object' || Array.isArray(value)) {
-                continue;
+            // Wenn es ein Zod-Schema ist, hinzufügen
+            if ('_def' in obj) {
+                result.push(obj as z.ZodTypeAny);
             }
 
-            // Prüfen, ob es sich um ein Zod-Schema handeln könnte
-            if (value && typeof value === 'object' && '_def' in value) {
-                result.push(value as z.ZodTypeAny);
+            // Rekursiv durch alle Eigenschaften gehen
+            for (const key in obj) {
+                const value = obj[key];
+
+                // Arrays durchsuchen
+                if (Array.isArray(value)) {
+                    value.forEach(item => searchInObject(item));
+                }
+                // Objekte durchsuchen
+                else if (value && typeof value === 'object') {
+                    searchInObject(value);
+                }
             }
-        }
+        };
+
+        searchInObject(schema._def);
     } catch (e) {
-        // Fehlerbehandlung für unerwartete Strukturen
-        console.warn('Fehler beim Durchsuchen der Schema-Struktur:', e);
+        console.warn('Fehler beim Suchen innerer Schemas:', e);
     }
 
     return result;
+}
+
+/**
+ * Verbesserte optional-Funktion, die immer die Metadaten erhält
+ */
+export function optional<T extends z.ZodTypeAny>(schema: T): z.ZodTypeAny {
+    const metadata = extractMetadata(schema);
+    const optionalSchema = schema.optional();
+    return withMetadata(optionalSchema, metadata);
+}
+
+// Die folgenden Funktionen erstellen Basis-Schemas mit Metadaten
+
+export function string(metadata: FieldMetadata = {}): z.ZodString {
+    return withMetadata(z.string(), { type: "string", ...metadata }) as z.ZodString;
+}
+
+export function email(metadata: FieldMetadata = {}): z.ZodString {
+    return withMetadata(
+        z.string().email(),
+        { type: "email", ...metadata }
+    ) as z.ZodString;
+}
+
+export function password(metadata: FieldMetadata = {}): z.ZodString {
+    return withMetadata(z.string(), { type: "password", ...metadata }) as z.ZodString;
+}
+
+export function number(metadata: FieldMetadata = {}): z.ZodNumber {
+    return withMetadata(
+        z.coerce.number(),
+        { type: "number", ...metadata }
+    ) as z.ZodNumber;
+}
+
+export function boolean(metadata: FieldMetadata = {}): z.ZodBoolean {
+    return withMetadata(
+        z.boolean(),
+        { type: "checkbox", ...metadata }
+    ) as z.ZodBoolean;
+}
+
+export function select(options: Option[], metadata: FieldMetadata = {}): z.ZodString {
+    return withMetadata(
+        z.string(),
+        { type: "select", options, ...metadata }
+    ) as z.ZodString;
+}
+
+export function multiSelect(options: Option[], metadata: FieldMetadata = {}) {
+    return withMetadata(
+        z.array(z.object({ label: z.string(), value: z.any() })),
+        { type: "multi-select", options, ...metadata }
+    );
+}
+
+export function textarea(metadata: FieldMetadata = {}): z.ZodString {
+    return withMetadata(z.string(), { type: "textarea", ...metadata }) as z.ZodString;
+}
+
+export function date(metadata: FieldMetadata = {}): z.ZodDate {
+    return withMetadata(z.date(), { type: "date", ...metadata }) as z.ZodDate;
+}
+
+export function tel(metadata: FieldMetadata = {}): z.ZodString {
+    return withMetadata(z.string(), { type: "tel", ...metadata }) as z.ZodString;
+}
+
+export function url(metadata: FieldMetadata = {}): z.ZodString {
+    return withMetadata(
+        z.string().url(),
+        { type: "url", ...metadata }
+    ) as z.ZodString;
 }
