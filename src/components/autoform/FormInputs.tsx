@@ -1,23 +1,23 @@
-import { FormControl } from "../ui/form";
-import { Input } from "../ui/input";
-import { Checkbox } from "../ui/checkbox";
-import { Switch } from "../ui/switch";
-import { Textarea } from "../ui/textarea";
+import { FormControl } from '../ui/form';
+import { Input } from '../ui/input';
+import { Checkbox } from '../ui/checkbox';
+import { Switch } from '../ui/switch';
+import { Textarea } from '../ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select";
-import MultipleSelector from "../ui/multi-select";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Button } from "../ui/button";
-import { Calendar } from "../ui/calendar";
-import { format } from "date-fns";
-import { FormInputProps } from "@/types/formTypes";
-import { cn } from "@/lib/twMerge";
-import { CalendarIcon } from "lucide-react";
+} from '../ui/select';
+import MultipleSelector from '../ui/multi-select';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Button } from '../ui/button';
+import { Calendar } from '../ui/calendar';
+import { format } from 'date-fns';
+import { FormInputProps } from '@/types/formTypes';
+import { cn } from '@/lib/utils';
+import { CalendarIcon } from 'lucide-react';
 
 /**
  * FormInput-Komponente, die basierend auf dem Feldtyp das passende Eingabefeld rendert
@@ -32,12 +32,12 @@ const FormInput = ({ props, field, fieldState }: FormInputProps) => {
   const { type, placeholder, disabled } = props;
 
   switch (props.type) {
-    case "email":
-    case "password":
-    case "number":
-    case "tel":
-    case "url":
-    case "string":
+    case 'email':
+    case 'password':
+    case 'number':
+    case 'tel':
+    case 'url':
+    case 'string':
       return (
         <FormControl>
           <Input
@@ -46,34 +46,34 @@ const FormInput = ({ props, field, fieldState }: FormInputProps) => {
             placeholder={placeholder}
             disabled={disabled}
             className={cn(
-              hasError && "border-destructive focus-visible:ring-destructive",
+              hasError && 'border-destructive focus-visible:ring-destructive'
             )}
           />
         </FormControl>
       );
-    case "checkbox":
+    case 'checkbox':
       return (
         <FormControl>
           <Checkbox
             checked={field.value as boolean}
             onCheckedChange={field.onChange}
             disabled={disabled}
-            className={cn(hasError && "border-destructive")}
+            className={cn(hasError && 'border-destructive')}
           />
         </FormControl>
       );
-    case "switch":
+    case 'switch':
       return (
         <FormControl>
           <Switch
             checked={field.value as boolean}
             onCheckedChange={field.onChange}
             disabled={disabled}
-            className={cn(hasError && "border-destructive")}
+            className={cn(hasError && 'border-destructive')}
           />
         </FormControl>
       );
-    case "textarea":
+    case 'textarea':
       return (
         <FormControl>
           <Textarea
@@ -81,27 +81,25 @@ const FormInput = ({ props, field, fieldState }: FormInputProps) => {
             placeholder={placeholder}
             disabled={disabled}
             className={cn(
-              hasError && "border-destructive focus-visible:ring-destructive",
+              hasError && 'border-destructive focus-visible:ring-destructive'
             )}
           />
         </FormControl>
       );
-    case "select":
+    case 'select':
       return (
         <Select
           onValueChange={field.onChange}
           defaultValue={field.value as string}
           value={field.value as string}
-          disabled={disabled}
-        >
+          disabled={disabled}>
           <FormControl>
             <SelectTrigger
               className={cn(
-                hasError && "border-destructive focus-visible:ring-destructive",
+                hasError && 'border-destructive focus-visible:ring-destructive'
               )}
-              disabled={disabled}
-            >
-              <SelectValue placeholder="Bitte auswählen" />
+              disabled={disabled}>
+              <SelectValue placeholder='Bitte auswählen' />
             </SelectTrigger>
           </FormControl>
           <SelectContent>
@@ -117,50 +115,49 @@ const FormInput = ({ props, field, fieldState }: FormInputProps) => {
           </SelectContent>
         </Select>
       );
-    case "multi-select":
+    case 'multi-select':
       return (
         <FormControl>
           <MultipleSelector
             value={Array.isArray(field.value) ? field.value : []}
             defaultOptions={props.options || []}
-            placeholder={placeholder || "Bitte auswählen..."}
+            placeholder={placeholder || 'Bitte auswählen...'}
             onChange={(selectedOptions) => {
               field.onChange(selectedOptions);
             }}
             disabled={disabled}
             emptyIndicator={
-              <p className="text-center text-lg leading-10 text-gray-600 dark:text-gray-400">
+              <p className='text-center text-lg leading-10 text-gray-600 dark:text-gray-400'>
                 Keine weiteren Ergebnisse gefunden.
               </p>
             }
-            className={cn(hasError && "border-destructive")}
+            className={cn(hasError && 'border-destructive')}
           />
         </FormControl>
       );
-    case "date":
+    case 'date':
       return (
         <Popover>
           <PopoverTrigger asChild>
             <FormControl>
               <Button
-                variant={"outline"}
+                variant={'outline'}
                 className={cn(
-                  "w-full pl-3 text-left font-normal",
-                  !field.value && "text-muted-foreground",
-                )}
-              >
+                  'w-full pl-3 text-left font-normal',
+                  !field.value && 'text-muted-foreground'
+                )}>
                 {field.value ? (
-                  format(field.value as Date, "dd.MM.yyyy")
+                  format(field.value as Date, 'dd.MM.yyyy')
                 ) : (
                   <span>Wähle ein Datum</span>
                 )}
-                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                <CalendarIcon className='ml-auto h-4 w-4 opacity-50' />
               </Button>
             </FormControl>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent className='w-auto p-0' align='start'>
             <Calendar
-              mode="single"
+              mode='single'
               selected={field.value as Date}
               onSelect={field.onChange}
               disabled={(date) => date <= new Date()}

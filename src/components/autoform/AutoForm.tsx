@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Button } from "@/components/ui/button";
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Button } from '@/components/ui/button';
 import {
   Form,
   FormDescription,
@@ -11,18 +11,18 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
+} from '@/components/ui/form';
 
-import { getFormSchema } from "@/lib/autoformSchema";
-import { SchemaTypes } from '@/schemas/schemaTypes';
+import { getFormSchema } from '@/lib/autoformSchema';
+import { SchemaTypes } from '@/types/schemaTypes';
 import {
   AutoFormProps,
   DefaultValueItem,
   FieldRequirement,
   FormValues,
-  SubmitResult
-} from "@/types/formTypes";
-import FormInput from "./FormInputs";
+  SubmitResult,
+} from '@/types/formTypes';
+import FormInput from './FormInputs';
 
 /**
  * AutoForm ist die Hauptkomponente des Systems.
@@ -85,7 +85,7 @@ function AutoForm<T extends SchemaTypes>({
         : undefined;
 
       // Feldtyp-spezifische Werteinitalisierung
-      if (prop.type === "multi-select") {
+      if (prop.type === 'multi-select') {
         // MultiSelect benötigt ein Array
         if (defaultValue) {
           defaultFormValue[prop.name] = Array.isArray(defaultValue)
@@ -94,21 +94,27 @@ function AutoForm<T extends SchemaTypes>({
         } else {
           defaultFormValue[prop.name] = [];
         }
-      } else if (prop.type === "select") {
+      } else if (prop.type === 'select') {
         // Select-Felder mit Sonderbehandlung für Optionsobjekte
         if (defaultValue) {
-          if (typeof defaultValue === "object" && defaultValue !== null && "value" in defaultValue) {
-            defaultFormValue[prop.name] = (defaultValue as { value: unknown }).value;
+          if (
+            typeof defaultValue === 'object' &&
+            defaultValue !== null &&
+            'value' in defaultValue
+          ) {
+            defaultFormValue[prop.name] = (
+              defaultValue as { value: unknown }
+            ).value;
           } else {
             defaultFormValue[prop.name] = defaultValue;
           }
         } else {
-          defaultFormValue[prop.name] = "";
+          defaultFormValue[prop.name] = '';
         }
       } else {
         // Standardfall für alle anderen Feldtypen
         defaultFormValue[prop.name] =
-          defaultValue !== undefined ? defaultValue : "";
+          defaultValue !== undefined ? defaultValue : '';
       }
     });
   }
@@ -135,18 +141,18 @@ function AutoForm<T extends SchemaTypes>({
       const res: SubmitResult | void = await onSubmit(typedValues);
 
       // Fehlerbehandlung
-      if (res && 'status' in res && res.status === "error") {
-        console.error(res.message ?? "Ein Fehler ist aufgetreten");
+      if (res && 'status' in res && res.status === 'error') {
+        console.error(res.message ?? 'Ein Fehler ist aufgetreten');
         return;
       }
 
       if (res) {
-        console.log("Erfolgreich übermittelt:", res);
+        console.log('Erfolgreich übermittelt:', res);
       }
       return;
     } else {
       // Standardfall, wenn kein onSubmit-Handler übergeben wurde
-      console.log("Übermittelte Werte:", values);
+      console.log('Übermittelte Werte:', values);
     }
   }
 
@@ -161,9 +167,8 @@ function AutoForm<T extends SchemaTypes>({
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(handleSubmit)}
-          className="space-y-4"
-          noValidate
-        >
+          className='space-y-4'
+          noValidate>
           {/* Rendering aller Felder aus den Props */}
           {props.map((prop) => {
             // Versteckte Felder werden komplett übersprungen
@@ -177,19 +182,18 @@ function AutoForm<T extends SchemaTypes>({
                 render={({ field, fieldState }) => (
                   <FormItem>
                     {/* Spezielle Darstellung für Checkbox/Switch vs. andere Feldtypen */}
-                    {prop.type === "checkbox" || prop.type === "switch" ? (
-                      <div className="flex flex-row items-start space-x-3 space-y-0 rounded-md">
+                    {prop.type === 'checkbox' || prop.type === 'switch' ? (
+                      <div className='flex flex-row items-start space-x-3 space-y-0 rounded-md'>
                         <FormInput
                           props={prop}
                           field={field}
                           fieldState={fieldState}
                         />
-                        <div className="space-y-1 leading-none">
+                        <div className='space-y-1 leading-none'>
                           <FormLabel>
-                            {prop.label}{" "}
-                            {/* Pflichtfeld-Markierung anzeigen */}
+                            {prop.label} {/* Pflichtfeld-Markierung anzeigen */}
                             {requiredFields[prop.name] && (
-                              <span className="text-destructive">*</span>
+                              <span className='text-destructive'>*</span>
                             )}
                           </FormLabel>
                           {prop.description && (
@@ -202,9 +206,9 @@ function AutoForm<T extends SchemaTypes>({
                     ) : (
                       <>
                         <FormLabel>
-                          {prop.label}{" "}
+                          {prop.label}{' '}
                           {requiredFields[prop.name] && (
-                            <span className="text-destructive">*</span>
+                            <span className='text-destructive'>*</span>
                           )}
                         </FormLabel>
                         <FormInput
@@ -223,11 +227,11 @@ function AutoForm<T extends SchemaTypes>({
               />
             );
           })}
-          <p className="text-sm">
-            <span className="text-destructive">*</span> Pflichtfelder
+          <p className='text-sm'>
+            <span className='text-destructive'>*</span> Pflichtfelder
           </p>
-          <Button type="submit" className="w-full">
-            {btnName ?? "Absenden"}
+          <Button type='submit' className='w-full'>
+            {btnName ?? 'Absenden'}
           </Button>
         </form>
       </Form>

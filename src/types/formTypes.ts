@@ -1,7 +1,7 @@
 import type { z } from "zod";
 import { ControllerRenderProps } from "react-hook-form";
 // FieldError wird bereits in dem Interface FormFieldState verwendet
-import { SchemaTypes, Option, InputTypes } from "@/schemas/schemaTypes";
+import { SchemaTypes, Option, InputTypes } from "@/types/schemaTypes";
 import { schemas } from "@/schemas/formSchemas";
 
 /**

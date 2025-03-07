@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import * as zod from '@/lib/zodExtensions';
-import { SchemaTypes } from '@/schemas/schemaTypes';
+import { SchemaTypes } from '@/types/schemaTypes';
 
 // User Admin Schema mit integrierten Metadaten
 export const userAdminSchema = z.object({

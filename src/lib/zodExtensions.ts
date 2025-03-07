@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { FieldMetadata, Option } from "@/schemas/schemaTypes";
+import { FieldMetadata, Option } from "@/types/schemaTypes";
 
 /**
  * Diese Datei erweitert Zod um die Fähigkeit, UI-bezogene Metadaten zu speichern.
