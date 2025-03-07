@@ -24,7 +24,6 @@ import {
 } from './ui/select';
 import MultipleSelector, { Option } from './ui/multi-select';
 import { cn } from '@/lib/utils';
-import { getFormSchema, SchemaTypes } from '@/lib/formSchemas';
 
 type Types =
   | 'string'
@@ -37,7 +36,7 @@ type Types =
   | 'email'
   | 'multi-select';
 
-export type Props = {
+type Props = {
   type: Types;
   name: string;
   options?: Option[];
@@ -58,20 +57,9 @@ const isFieldRequired = (schema: z.ZodTypeAny): boolean => {
   }
 };
 
-const AutoForm = ({
-  btnName,
-  schema,
-}: {
-  btnName?: string;
-  schema: SchemaTypes;
-}) => {
+const AutoForm = ({ btnName, props }: { btnName?: string; props: Props[] }) => {
   const schemaFields: Record<string, z.ZodTypeAny> = {};
   const requiredFields: Record<string, boolean> = {};
-
-  const props = getFormSchema(schema);
-  if (!props) {
-    return;
-  }
 
   props.forEach((prop) => {
     // Verwende immer den benutzerdefinierten Validator
