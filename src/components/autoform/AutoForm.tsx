@@ -46,15 +46,20 @@ const isFieldRequired = (schema: z.ZodTypeAny): boolean => {
 /**
  * Die typsichere AutoForm-Komponente
  */
-function AutoForm<T extends SchemaTypes>({
-  btnName,
-  schema,
-  defaultValues = [],
-  options = {},
-  fieldOverrides = {},
-  errorMessages = {},
-  onSubmit,
-}: AutoFormProps<T>) {
+function AutoForm<T extends SchemaTypes>(props: AutoFormProps<T>) {
+  // Extrahiere alle benötigten Props außer options
+  const {
+    btnName,
+    schema,
+    defaultValues = [],
+    fieldOverrides = {},
+    errorMessages = {},
+    onSubmit
+  } = props;
+
+  // Verwende den tatsächlichen Typ aus props.options ohne explizite Typannotation
+  const options = props.options || {};
+
   const [formError, setFormError] = useState<{ fieldName?: string, message: string } | null>(null);
 
   // Typsichere Speicherstrukturen für die Formularerstellung
@@ -62,19 +67,19 @@ function AutoForm<T extends SchemaTypes>({
   const requiredFields: FieldRequirement = {};
   const defaultFormValue: Record<string, unknown> = {};
 
-  // Schema in Props konvertieren
-  const props = getFormSchema(schema, options, fieldOverrides);
+  // Schema in Props konvertieren mit dem korrekt typisierten options-Objekt
+  const props2 = getFormSchema(schema, options, fieldOverrides);
 
   useEffect(() => {
     // Validiere das Schema und setze Fehlermeldung falls nötig
-    if (!props) {
+    if (!props2) {
       setFormError({
         message: `Das Formular kann nicht angezeigt werden. Schema "${schema}" existiert nicht.`
       });
       return;
     }
 
-    if (props.length === 0) {
+    if (props2.length === 0) {
       setFormError({
         message: `Das Formular kann nicht angezeigt werden, da es keine Felder enthält.`
       });
@@ -83,12 +88,12 @@ function AutoForm<T extends SchemaTypes>({
 
     // Formular-Fehler zurücksetzen, wenn alles in Ordnung ist
     setFormError(null);
-  }, [schema, props]);
+  }, [schema, props2]);
 
   // Schema-Felder verarbeiten, falls das Schema existiert
-  if (props) {
+  if (props2) {
     try {
-      props.forEach((prop) => {
+      props2.forEach((prop) => {
         try {
           // Schema aus den Props extrahieren
           const validator = prop.validator;
@@ -190,7 +195,31 @@ function AutoForm<T extends SchemaTypes>({
 
   // react-hook-form Setup mit Zod-Validierung und benutzerdefinierten Fehlermeldungen
   const form = useForm<FormSchemaType>({
-    resolver: zodResolver(dynamicSchema),
+    resolver: async (values, context, options) => {
+      // Werte vorverarbeiten: Leere Strings in optionalen Feldern zu undefined umwandeln
+      const processedValues = { ...values };
+
+      // Für jedes Schema-Feld prüfen
+      Object.entries(schemaFields).forEach(([key, schema]) => {
+        // Nur für optionale Felder
+        if (!requiredFields[key]) {
+          const value = processedValues[key];
+
+          // Fall 1: Leere Strings in undefined umwandeln
+          if (typeof value === 'string' && value === '') {
+            processedValues[key] = undefined;
+          }
+
+          // Fall 2: Leere Arrays in undefined umwandeln (für Multi-Select)
+          if (Array.isArray(value) && value.length === 0) {
+            processedValues[key] = undefined;
+          }
+        }
+      });
+
+      // Validierung mit verarbeiteten Werten durchführen
+      return zodResolver(dynamicSchema)(processedValues, context, options);
+    },
     defaultValues: defaultFormValue as unknown as FormSchemaType,
     // Hier fügen wir eine Logik ein, um die Fehlermeldungen anzupassen
     context: { errorMessages, fieldOverrides }
@@ -242,7 +271,7 @@ function AutoForm<T extends SchemaTypes>({
   }
 
   // Wenn keine Props vorhanden sind, wird eine Fehlermeldung angezeigt
-  if (!props || props.length === 0) {
+  if (!props2 || props2.length === 0) {
     return (
       <Alert variant="destructive" className="mb-4">
         <AlertCircle className="h-4 w-4" />
@@ -262,7 +291,7 @@ function AutoForm<T extends SchemaTypes>({
           className='space-y-4'
           noValidate>
           {/* Rendering aller Felder aus den Props */}
-          {props.map((prop) => {
+          {props2.map((prop) => {
             // Versteckte Felder werden komplett übersprungen
             if (prop.hidden === true) return null;
 

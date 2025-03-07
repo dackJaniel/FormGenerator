@@ -1,12 +1,11 @@
 import { test } from './actions/test';
 import AutoForm from './components/autoform/AutoForm';
-import { DefaultValueItem } from './types/formTypes';
 
 function App() {
   // Typsichere DefaultValueItem Deklarationen
-  const userAdminDefaults: DefaultValueItem<"user">[] = [
-    { status: "ACTIVE" }
-  ];
+  // const userAdminDefaults: DefaultValueItem<"user">[] = [
+  //   { status: "ACTIVE" }
+  // ];
 
   return (
     <>
@@ -31,7 +30,7 @@ function App() {
             console.log(data.status);
             return test();
           }}
-          defaultValues={userAdminDefaults}
+        // defaultValues={userAdminDefaults}
         />
       </div>
     </>

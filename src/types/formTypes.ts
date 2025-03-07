@@ -1,7 +1,7 @@
 import type { z } from "zod";
-import { ControllerRenderProps } from "react-hook-form";
-// FieldError wird bereits in dem Interface FormFieldState verwendet
-import { Option } from "@/types/schemaTypes";
+import { ControllerRenderProps, ControllerFieldState } from "react-hook-form";
+// Option-Typ aus formFieldTypes.ts verwenden, um Doppeldefinitionen zu vermeiden
+import { Option } from "./formFieldTypes";
 import { schemas, SchemaTypes } from "@/schemas/formSchemas";
 
 /**
@@ -63,7 +63,8 @@ export type InputTypes =
     | "multi-select"
     | "tel"
     | "url"
-    | "date";
+    | "date"
+    | "datetime"; // Neuer Typ für den DateTime-Picker
 
 /**
  * FieldState-Typ für Formularfelder mit Fehlerzustand
@@ -78,11 +79,18 @@ export interface FormFieldState {
 /**
  * Props für die FormInput-Komponente, die für jedes einzelne Feld verwendet werden.
  */
-export type FormInputProps = {
-    props: Partial<Props>;                   // Die Props für dieses Feld
-    field: ControllerRenderProps<Record<string, unknown>, string>;  // Typkorrekte react-hook-form Field-Definition
-    fieldState: FormFieldState;              // Status des Formularfeldes
-};
+export interface FormInputProps {
+    props: {
+        type: 'email' | 'password' | 'number' | 'tel' | 'url' | 'string' | 'checkbox' | 'switch' |
+        'textarea' | 'select' | 'multi-select' | 'date' | 'datetime';
+        placeholder?: string;
+        disabled?: boolean;
+        hidden?: boolean;
+        options?: Option[];
+    };
+    field: ControllerRenderProps<Record<string, unknown>, string>;
+    fieldState: ControllerFieldState; // Verwende den korrekten Typ
+}
 
 /**
  * Definition für Überschreibungen von Feldeigenschaften zur Laufzeit.

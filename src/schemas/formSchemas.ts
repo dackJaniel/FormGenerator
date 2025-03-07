@@ -42,7 +42,7 @@ export const userSchema = z.object({
     phone: zod.tel({
         label: "Telefonnummer",
         placeholder: "+49 123 456789",
-        description: "Ihre Telefonnummer für dringende Kontaktaufnahme"
+        description: "Ihre deutsche Telefonnummer (z.B. +49 123 456789 oder 0123 456789)"
     }).optional(),
 
     // URL-Feld
@@ -70,7 +70,7 @@ export const userSchema = z.object({
             label: "Status",
             description: "Aktueller Status Ihres Kontos"
         }
-    ),
+    ).optional(),
 
     // Mehrfachauswahl (Multi-Select)
     roles: zod.multiSelect(
@@ -84,13 +84,20 @@ export const userSchema = z.object({
             label: "Rollen",
             description: "Benutzerrollen und Berechtigungen"
         }
-    ).optional(),
+    ),
 
     // Datum-Feld mit benutzerfreundlicherer Konfiguration
     birthday: zod.date({
         label: "Geburtsdatum",
         description: "Bitte wählen Sie Ihr Geburtsdatum aus",
         placeholder: "TT.MM.JJJJ"
+    }).optional(),
+
+    // DateTime-Feld für Termine/Ereignisse
+    appointmentTime: zod.datetime({
+        label: "Terminzeit",
+        description: "Wählen Sie Datum und Uhrzeit für Ihren Termin",
+        placeholder: "Datum und Uhrzeit auswählen"
     }).optional(),
 
     // Boolean-Feld (Checkbox)

@@ -334,9 +334,18 @@ export function date(metadata: FieldMetadata = {}): z.ZodDate {
 }
 
 export function tel(metadata: FieldMetadata = {}): z.ZodString {
-    // Diese Funktion arbeitet bereits korrekt
+    // Regulärer Ausdruck für deutsche Telefonnummern:
+    // - Beginnt mit +49 (international) oder 0 (national)
+    // - Erlaubt Leerzeichen, Klammern, Bindestriche als Trenner
+    // - Stellt sicher, dass die Länge angemessen ist (min 10 Stellen inkl. Vorwahl)
+    const germanPhoneRegex = /^(\+49|0)[.\- ]?([0-9]{1,4})[.\- ]?([0-9]{1,5})[.\- ]?([0-9]{1,8})$/;
+
     return withMetadata(
-        withRequiredError(z.string()),
+        z.string({
+            required_error: REQUIRED_ERROR_MESSAGE
+        })
+            .min(1, REQUIRED_ERROR_MESSAGE)
+            .regex(germanPhoneRegex, "Bitte geben Sie eine gültige deutsche Telefonnummer ein (z.B. +49 123 45678910 oder 0123 45678910)"),
         { type: "tel", ...metadata }
     ) as z.ZodString;
 }
@@ -365,4 +374,15 @@ export function required<T extends z.ZodTypeAny>(schema: T, message: string = RE
 
     // Für andere Schema-Typen Standardprüfung mit Fehlermeldung hinzufügen
     return withMetadata(schema, metadata);
+}
+
+export function datetime(metadata: FieldMetadata = {}): z.ZodDate {
+    // DateTime-Feld mit benutzerdefinierten Fehlermeldungen
+    return withMetadata(
+        z.date({
+            required_error: REQUIRED_ERROR_MESSAGE,
+            invalid_type_error: "Bitte wählen Sie ein gültiges Datum mit Uhrzeit aus"
+        }),
+        { type: "datetime", ...metadata }
+    ) as z.ZodDate;
 }

@@ -3,6 +3,8 @@
  * Sie dient als zentrale Referenz für gemeinsam genutzte Typen zwischen Schemas und Formularkomponenten.
  */
 
+import { InputTypes } from "./formTypes";
+
 /**
  * Standardisierte Optionsobjekt-Schnittstelle für Select- und MultiSelect-Felder.
  * Wird sowohl in Schemas als auch in der Formular-Darstellung verwendet.
@@ -14,24 +16,6 @@ export interface Option {
     fixed?: boolean;            // Optional: Option kann nicht entfernt werden (für MultiSelect)
     [key: string]: string | boolean | undefined;  // Zusätzliche benutzerdefinierte Eigenschaften
 }
-
-/**
- * Alle unterstützten Eingabetypen für Formularfelder.
- * Diese werden verwendet, um die richtigen UI-Komponenten für jedes Feld zu rendern.
- */
-export type InputTypes =
-    | "string"
-    | "checkbox"
-    | "switch"
-    | "password"
-    | "select"
-    | "textarea"
-    | "number"
-    | "email"
-    | "multi-select"
-    | "tel"
-    | "url"
-    | "date";
 
 /**
  * Metadaten für Formularfelder, die in Zod-Schemas gespeichert werden.
