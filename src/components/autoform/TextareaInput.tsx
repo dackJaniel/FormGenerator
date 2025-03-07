@@ -14,7 +14,7 @@ const TextareaInput = ({ field, fieldState, placeholder, disabled }: TextareaFie
                 placeholder={placeholder}
                 disabled={disabled}
                 className={cn(
-                    'placeholder:text-xs',
+                    'placeholder:text-xs text-sm',
                     hasError && 'border-destructive focus-visible:ring-destructive'
                 )}
             />

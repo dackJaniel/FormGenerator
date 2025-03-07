@@ -18,12 +18,31 @@ const TextInput = ({ field, fieldState, type, placeholder, disabled }: TextField
                 placeholder={placeholder || ''}
                 disabled={disabled}
                 onChange={(e) => {
-                    // Leere Eingabe als undefined verarbeiten, sonst den normalen Wert
-                    const value = e.target.value === '' ? undefined : e.target.value;
-                    field.onChange(value);
+                    // Für Zahlenfelder: konvertiere den String-Wert in eine Zahl
+                    if (type === 'number') {
+                        const value = e.target.value;
+                        // Leere Eingabe als undefined verarbeiten
+                        if (value === '') {
+                            field.onChange(undefined);
+                        } else {
+                            // Versuche den Wert als Zahl zu parsen
+                            const numValue = parseFloat(value);
+                            // Nur wenn eine gültige Zahl eingegeben wurde
+                            if (!isNaN(numValue)) {
+                                field.onChange(numValue); // Übergebe die Zahl, nicht den String
+                            } else {
+                                // Bei ungültiger Zahl behalte den String-Wert für die Anzeige
+                                field.onChange(value);
+                            }
+                        }
+                    } else {
+                        // Für andere Felder: wie bisher
+                        const value = e.target.value === '' ? undefined : e.target.value;
+                        field.onChange(value);
+                    }
                 }}
                 className={cn(
-                    'placeholder:text-xs',
+                    'placeholder:text-xs text-sm',
                     hasError && 'border-destructive focus-visible:ring-destructive'
                 )}
             />
