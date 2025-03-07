@@ -42,10 +42,12 @@ const FormInput = ({ props, field, fieldState }: FormInputProps) => {
         <FormControl>
           <Input
             {...field}
+            value={field.value as string}
             type={type}
             placeholder={placeholder}
             disabled={disabled}
             className={cn(
+              'placeholder:text-xs',
               hasError && 'border-destructive focus-visible:ring-destructive'
             )}
           />
@@ -78,9 +80,11 @@ const FormInput = ({ props, field, fieldState }: FormInputProps) => {
         <FormControl>
           <Textarea
             {...field}
+            value={field.value as string}
             placeholder={placeholder}
             disabled={disabled}
             className={cn(
+              'placeholder:text-xs',
               hasError && 'border-destructive focus-visible:ring-destructive'
             )}
           />
@@ -131,7 +135,10 @@ const FormInput = ({ props, field, fieldState }: FormInputProps) => {
                 Keine weiteren Ergebnisse gefunden.
               </p>
             }
-            className={cn(hasError && 'border-destructive')}
+            className={cn(
+              'placeholder:text-xs',
+              hasError && 'border-destructive'
+            )}
           />
         </FormControl>
       );

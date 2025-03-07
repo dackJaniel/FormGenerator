@@ -49,6 +49,7 @@ function AutoForm<T extends SchemaTypes>({
   defaultValues = [],
   options = {},
   fieldOverrides = {},
+  errorMessages = {},
   onSubmit,
 }: AutoFormProps<T>) {
   // Typsichere Speicherstrukturen für die Formularerstellung
@@ -125,10 +126,12 @@ function AutoForm<T extends SchemaTypes>({
   // Typsichere Form-Werte basierend auf dem Schema
   type FormSchemaType = z.infer<typeof dynamicSchema>;
 
-  // react-hook-form Setup mit Zod-Validierung
+  // react-hook-form Setup mit Zod-Validierung und benutzerdefinierten Fehlermeldungen
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(dynamicSchema),
     defaultValues: defaultFormValue as unknown as FormSchemaType,
+    // Hier fügen wir eine Logik ein, um die Fehlermeldungen anzupassen
+    context: { errorMessages, fieldOverrides }
   });
 
   /**

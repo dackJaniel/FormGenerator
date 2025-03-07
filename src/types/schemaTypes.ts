@@ -4,12 +4,6 @@
  */
 
 /**
- * Alle unterstützten Schematypen im System.
- * Jeder Typ entspricht einem vollständigen Formularschema für einen bestimmten Anwendungsfall.
- */
-export type SchemaTypes = "group" | "user" | "user-admin" | "company" | "bankDetails" | "product" | "note" | "stampCard" | "stamp" | "plan";
-
-/**
  * Standardisierte Optionsobjekt-Schnittstelle für Select- und MultiSelect-Felder.
  * Wird sowohl in Schemas als auch in der Formular-Darstellung verwendet.
  */

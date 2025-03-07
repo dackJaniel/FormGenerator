@@ -1,8 +1,8 @@
 import type { z } from "zod";
 import { ControllerRenderProps } from "react-hook-form";
 // FieldError wird bereits in dem Interface FormFieldState verwendet
-import { SchemaTypes, Option, InputTypes } from "@/types/schemaTypes";
-import { schemas } from "@/schemas/formSchemas";
+import { Option, InputTypes } from "@/types/schemaTypes";
+import { schemas, SchemaTypes } from "@/schemas/formSchemas";
 
 /**
  * Diese Datei definiert komplexere Typen und abgeleitete Schnittstellen,
@@ -49,21 +49,6 @@ export type Props = {
 };
 
 /**
- * Wochentag-Definition für spezielle Feldtypen.
- */
-export type Day = {
-    label:
-    | "Montag"
-    | "Dienstag"
-    | "Mittwoch"
-    | "Donnerstag"
-    | "Freitag"
-    | "Samstag"
-    | "Sonntag";
-    value: "mo" | "di" | "mi" | "do" | "fr" | "sa" | "so";
-};
-
-/**
  * FieldState-Typ für Formularfelder mit Fehlerzustand
  */
 export interface FormFieldState {
@@ -92,6 +77,7 @@ export type FieldOverrides = {
         placeholder?: string;   // Überschreibt den Platzhaltertext
         hidden?: boolean;       // Überschreibt den versteckten Status
         disabled?: boolean;     // Überschreibt den deaktivierten Status
+        errorMessage?: string;  // Überschreibt die Fehlermeldung
     };
 };
 
@@ -114,6 +100,7 @@ export type AutoFormProps<T extends SchemaTypes> = {
     ? { [K in keyof SchemaFieldDefinitions[T]]?: Option[] }
     : { [fieldName: string]: Option[] };  // Typsichere Optionen
     fieldOverrides?: FieldOverrides; // Überschreibungen für Felder
+    errorMessages?: { [fieldName: string]: string }; // Globale Fehlermeldungen-Überschreibungen
     onSubmit?: (               // Typsicherer Submit-Handler
         payload: T extends keyof SchemaFieldDefinitions
             ? SchemaFieldDefinitions[T]

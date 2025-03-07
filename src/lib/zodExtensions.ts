@@ -33,6 +33,17 @@ export function withMetadata<T extends z.ZodTypeAny>(
 }
 
 /**
+ * Macht ein Schema optional und überträgt dabei alle Metadaten
+ * @param schema - Das Schema, das optional werden soll
+ * @returns Ein optionales Schema mit den Metadaten des ursprünglichen Schemas
+ */
+export function optional<T extends z.ZodTypeAny>(schema: T): T {
+    const metadata = extractMetadata(schema);
+    const optionalSchema = schema.optional();
+    return withMetadata(optionalSchema, metadata) as T;
+}
+
+/**
  * Erstellt ein String-Schema mit UI-Metadaten
  * @param metadata - Optional: UI-bezogene Metadaten
  */
@@ -46,6 +57,14 @@ export function string(metadata: FieldMetadata = {}) {
  */
 export function email(metadata: FieldMetadata = {}) {
     return withMetadata(z.string().email(), { type: "email", ...metadata });
+}
+
+/**
+ * Erstellt ein Passwort-Schema mit UI-Metadaten
+ * @param metadata - Optional: UI-bezogene Metadaten
+ */
+export function password(metadata: FieldMetadata = {}) {
+    return withMetadata(z.string(), { type: "password", ...metadata });
 }
 
 /**
@@ -111,6 +130,108 @@ export function date(metadata: FieldMetadata = {}) {
  * @returns Die im Schema gespeicherten Metadaten oder ein leeres Objekt
  */
 export function extractMetadata(schema: z.ZodTypeAny): FieldMetadata {
+    // Wenn das Schema null oder undefined ist, leeres Objekt zurückgeben
+    if (!schema) return {};
+
     const extendedSchema = schema as ExtendedZodType<z.ZodTypeAny>;
-    return extendedSchema.__fieldMetadata || {};
+
+    // 1. Direkt gespeicherte Metadaten haben höchste Priorität
+    if (extendedSchema.__fieldMetadata) {
+        return extendedSchema.__fieldMetadata;
+    }
+
+    try {
+        // 2. Rekursive Extraktion für verschiedene Zod-Typen
+
+        // Für ZodEffects (wie bei .refine(), .transform(), etc.)
+        if (schema instanceof z.ZodEffects && schema._def) {
+            return extractMetadata(schema._def.schema);
+        }
+
+        // Für optionale Schemas (ZodOptional)
+        if (schema instanceof z.ZodOptional && schema._def) {
+            return extractMetadata(schema._def.innerType);
+        }
+
+        // Sichere Typprüfungen für Schema-Definitionen
+        if (schema._def) {
+            // Für verschachtelte Schemas mit innerType (z.B. nach min(), max())
+            if ('innerType' in schema._def && schema._def.innerType) {
+                return extractMetadata(schema._def.innerType);
+            }
+
+            // Für ZodEffects und ähnliche
+            if ('schema' in schema._def && schema._def.schema) {
+                return extractMetadata(schema._def.schema);
+            }
+
+            // Für Arrays und Listen
+            if ('type' in schema._def && schema._def.type) {
+                return extractMetadata(schema._def.type);
+            }
+
+            // Für Typen mit typeName
+            if ('typeName' in schema._def && typeof schema._def.typeName === 'string') {
+                if (schema._def.typeName === 'ZodObject') {
+                    return (schema as unknown as ExtendedZodType<z.ZodObject<any>>).__fieldMetadata || {};
+                }
+
+                if (schema._def.typeName === 'ZodEnum') {
+                    return (schema as unknown as ExtendedZodType<z.ZodEnum<any>>).__fieldMetadata || {};
+                }
+            }
+        }
+
+        // Rekursive Suche nach verschachtelten Schemas
+        const innerSchemas = findPossibleInnerSchemas(schema);
+        for (const innerSchema of innerSchemas) {
+            const metadata = extractMetadata(innerSchema);
+            if (Object.keys(metadata).length > 0) {
+                return metadata;
+            }
+        }
+    } catch (e) {
+        // Fehler beim Extrahieren der Metadaten abfangen, um Abstürze zu vermeiden
+        console.warn('Fehler beim Extrahieren der Metadaten:', e);
+    }
+
+    // Fallback für alle anderen Fälle
+    return {};
+}
+
+/**
+ * Hilfsfunktion zum Durchsuchen aller möglichen inneren Schemas
+ * Diese Funktion hilft bei der Extraktion von Metadaten aus komplexen 
+ * verschachtelten Schemas, besonders bei Validierungsketten
+ */
+function findPossibleInnerSchemas(schema: z.ZodTypeAny): z.ZodTypeAny[] {
+    if (!schema || typeof schema !== 'object') return [];
+    if (!('_def' in schema) || !schema._def || typeof schema._def !== 'object') return [];
+
+    const result: z.ZodTypeAny[] = [];
+
+    try {
+        // Durchsuche alle Properties des _def-Objekts nach möglichen Schemas
+        for (const key in schema._def) {
+            // Typname überspringen
+            if (key === 'typeName') continue;
+
+            const value = (schema._def as Record<string, unknown>)[key];
+
+            // Sicherstellen, dass der Wert ein Objekt ist
+            if (!value || typeof value !== 'object' || Array.isArray(value)) {
+                continue;
+            }
+
+            // Prüfen, ob es sich um ein Zod-Schema handeln könnte
+            if (value && typeof value === 'object' && '_def' in value) {
+                result.push(value as z.ZodTypeAny);
+            }
+        }
+    } catch (e) {
+        // Fehlerbehandlung für unerwartete Strukturen
+        console.warn('Fehler beim Durchsuchen der Schema-Struktur:', e);
+    }
+
+    return result;
 }

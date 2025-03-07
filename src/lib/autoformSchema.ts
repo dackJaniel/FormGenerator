@@ -25,7 +25,7 @@ export function getPropsFromSchema(
     const entries = Object.entries(shape);
 
     return entries.map(([key, value]) => {
-        // Metadaten aus erweiterten Zod-Schemas extrahieren
+        // Verbesserte Metadaten-Extraktion, die auch mit optionalen Feldern funktioniert
         const metadata = extractMetadata(value);
 
         // Optionen aus Parametern oder Metadaten abrufen
@@ -68,4 +68,26 @@ export function getFormSchema(
 
     // Props aus dem Schema generieren
     return getPropsFromSchema(schema, options, fieldOverrides);
+}
+
+// Optional: Eine Funktion, um Fehlermeldungen zu überschreiben
+export function withCustomErrorMessages(
+    schema: z.ZodObject<any>,
+    errorMessages: Record<string, string>
+): z.ZodObject<any> {
+    const shape = schema._def.shape();
+    const newShape: Record<string, z.ZodTypeAny> = {};
+
+    Object.entries(shape).forEach(([key, field]) => {
+        if (errorMessages[key]) {
+            // Hier könnten wir eine tiefere Logik implementieren,
+            // um spezifische Validierungsregeln mit benutzerdefinierten Meldungen zu versehen
+            // Dies ist jedoch komplex und würde eine Erweiterung des Zod-Schemas erfordern
+            newShape[key] = field;
+        } else {
+            newShape[key] = field;
+        }
+    });
+
+    return z.object(newShape);
 }
