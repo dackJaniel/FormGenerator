@@ -200,7 +200,7 @@ function AutoForm<T extends SchemaTypes>(props: AutoFormProps<T>) {
       const processedValues = { ...values };
 
       // Für jedes Schema-Feld prüfen
-      Object.entries(schemaFields).forEach(([key, schema]) => {
+      Object.entries(schemaFields).forEach(([key]) => {
         // Nur für optionale Felder
         if (!requiredFields[key]) {
           const value = processedValues[key];
